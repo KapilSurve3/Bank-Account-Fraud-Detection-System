@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fraud Detection Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .log-container {
+            height: 500px;
+            overflow-y: auto;
+            background-color: #3c3c3e;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .log-table {
+            width: 100%;
+        }
+        .log-table th {
+            position: sticky;
+            top: 0;
+            background-color: #343a40;
+            color: rgb(255, 255, 255);
+            z-index: 1;
+        }
+        .high-risk {
+            background-color: #ffdddd;
+        }
+        .medium-risk {
+            background-color: #ffffcc;
+        }
+        .low-risk {
+            background-color: #ddffdd;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Fraud Detection System</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/transaction_fraud">Transaction Fraud</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/account_fraud">Account Fraud</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Transaction Logs -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Transaction Logs</h5>
+                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addTransactionModal">Add New</button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="log-container">
+                            <table class="table table-striped table-hover log-table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Transaction_Amount</th>
+                                        <th>Transaction_Type</th>
+                                        <th>Merchant_Category</th>
+                                        <th>Transaction_Time</th>
+                                        <th>Risk%</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transaction-logs">
+                                    <!-- Transaction logs will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Account Logs -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Account Logs</h5>
+                        
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="log-container">
+                            <table class="table table-striped table-hover log-table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Age</th>
+                                        <th>Source</th>
+                                        <th>Device</th>
+                                        <th>Foreign_request</th>
+                                        <th>Risk%</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="account-logs">
+                                    <!-- Account logs will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Transaction Modal -->
+    <div class="modal fade" id="addTransactionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Transaction Record</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="transaction-form">
+                        <div class="mb-3">
+                            <label for="transaction-amount" class="form-label">Amount</label>
+                            <input type="number" class="form-control" id="transaction-amount" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="transaction-customer" class="form-label">Customer</label>
+                            <input type="text" class="form-control" id="transaction-customer" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="transaction-type" class="form-label">Type</label>
+                            <select class="form-select" id="transaction-type" required>
+                                <option value="Online">Online</option>
+                                <option value="In-Person">In-Person</option>
+                                <option value="ATM">ATM</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="transaction-date" class="form-label">Date</label>
+                            <input type="datetime-local" class="form-control" id="transaction-date" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="add-transaction-btn">Add Transaction</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Account Modal -->
+    <div class="modal fade" id="addAccountModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Account Record</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="account-form">
+                        <div class="mb-3">
+                            <label for="account-name" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="account-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="account-age" class="form-label">Age</label>
+                            <input type="number" class="form-control" id="account-age" min="18" max="100" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="account-source" class="form-label">Source</label>
+                            <select class="form-select" id="account-source" required>
+                                <option value="Web">Web</option>
+                                <option value="Mobile App">Mobile App</option>
+                                <option value="Branch">Branch</option>
+                                <option value="Phone">Phone</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="account-date" class="form-label">Date</label>
+                            <input type="datetime-local" class="form-control" id="account-date" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="add-account-btn">Add Account</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Results Section -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card form-card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class='bx bx-search-alt'></i> Real-time Account Addition
+                    </h5>
+                    <form id="accountFraudForm">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">
+                                    <i class='bx bx-money'></i> Income
+                                </label>
+                                <input type="number" class="form-control" name="income" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">
+                                    <i class='bx bx-user-circle'></i> Name-Email Similarity Score
+                                </label>
+                                <input type="number" class="form-control" name="name_email_similarity" min="0" max="1" step="0.1" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">
+                                    <i class='bx bx-map'></i> cibil_score
+                                </label>
+                                <input type="number" class="form-control" name="cibil_score" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">
+                                    <i class='bx bx-map'></i> credit_limit
+                                </label>
+                                <input type="number" class="form-control" name="credit_limit" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">
+                                    <i class='bx bx-user'></i> Customer Age
+                                </label>
+                                <input id="customer_age" type="number" class="form-control" name="customer_age" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">
+                                    <i class='bx bx-calendar'></i> Days Since Request
+                                </label>
+                                <input type="number" class="form-control" name="days_since_request" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">
+                                    <i class='bx bx-money'></i> Intended Balance Amount
+                                </label>
+                                <input type="number" class="form-control" name="intended_balcon_amount" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">
+                                    <i class='bx bx-credit-card'></i> Payment Type
+                                </label>
+                                <select class="form-select" name="payment_type" required>
+                                    <option value="Credit Card">Credit Card</option>
+                                    <option value="Debit Card">Debit Card</option>
+                                    <option value="Bank Transfer">Bank Transfer</option>
+                                </select>
+                            </div>
+                            
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">
+                                    <i class='bx bx-devices'></i> Device OS
+                                </label>
+                                <select class="form-select" name="device_os" required>
+                                    <option value="Windows">Windows</option>
+                                    <option value="MacOS">MacOS</option>
+                                    <option value="iOS">iOS</option>
+                                    <option value="Android">Android</option>
+                                    <option value="Linux">Linux</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">
+                                    <i class='bx bx-shield-quarter'></i> Device Fraud Count
+                                </label>
+                                <input type="number" class="form-control" name="device_fraud_count" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="foreign_request" id="foreignRequest">
+                                    <label class="form-check-label" for="foreignRequest">
+                                        <i class='bx bx-globe'></i> Foreign Request
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="keep_alive_session" id="keepAliveSession">
+                                    <label class="form-check-label" for="keepAliveSession">
+                                        <i class='bx bx-time'></i> Keep Alive Session
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class='bx bx-radar'></i> Add Account
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mt-4 mb-4">
+        <div class="col-md-12">
+            <div class="card result-card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class='bx bx-detail'></i> Detection Results
+                    </h5>
+                    <div id="results" class="alert alert-info" style="display: none;">
+                        <div class="d-flex align-items-center">
+                            <i class='bx bx-shield-quarter me-2'></i>
+                            <div>
+                                <h6>Risk Score: <span id="riskScore"></span></h6>
+                                <p id="resultMessage" class="mb-0"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+</div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <script>
+        // Sample transaction data
+        const transactionData = [
+            { id: 'TXN0001', amount: 5420.50, customer: 'AA', type: 'Online', date: '2024-03-30 14:30', risk: 78 },
+           
+        ];
+        
+        // Sample account data
+        const accountData = [
+            { id: 'ACC0001', name: 'John Doe', age: 35, source: 'Web', date: '2024-03-30 09:15', risk: 65 },
+      
+        ];
+        
+        // Function to populate transaction logs
+        function populateTransactionLogs() {
+            const logsContainer = document.getElementById('transaction-logs');
+            logsContainer.innerHTML = '';
+            
+            transactionData.forEach(transaction => {
+                const row = document.createElement('tr');
+                
+                // Add risk-based styling
+                if (transaction.risk >= 70) {
+                    row.classList.add('high-risk');
+                } else if (transaction.risk >= 30) {
+                    row.classList.add('medium-risk');
+                } else {
+                    row.classList.add('low-risk');
+                }
+                
+                row.innerHTML = `
+                    <td>${transaction.id}</td>
+                    <td>$${transaction.amount.toFixed(2)}</td>
+                    <td>${transaction.customer}</td>
+                    <td>${transaction.type}</td>
+                    <td>${transaction.date}</td>
+                    <td><strong>${transaction.risk}%</strong></td>
+                `;
+                
+                logsContainer.appendChild(row);
+            });
+        }
+        
+        // Function to populate account logs
+        function populateAccountLogs() {
+            const logsContainer = document.getElementById('account-logs');
+            logsContainer.innerHTML = '';
+            
+            accountData.forEach(account => {
+                const row = document.createElement('tr');
+                
+                // Add risk-based styling
+                if (account.risk >= 70) {
+                    row.classList.add('high-risk');
+                } else if (account.risk >= 30) {
+                    row.classList.add('medium-risk');
+                } else {
+                    row.classList.add('low-risk');
+                }
+                
+                row.innerHTML = `
+                    <td>${account.id}</td>
+                    <td>${account.name}</td>
+                    <td>${account.age}</td>
+                    <td>${account.source}</td>
+                    <td>${account.device}</td>
+                    <td>${account.foreign_request}</td>
+                    <td><strong>${account.risk}%</strong></td>
+                `;
+                
+                logsContainer.appendChild(row);
+            });
+        }
+        
+        // Function to add new transaction
+        document.getElementById('add-transaction-btn').addEventListener('click', function() {
+            const amount = parseFloat(document.getElementById('transaction-amount').value);
+            const customer = document.getElementById('transaction-customer').value;
+            const type = document.getElementById('transaction-type').value;
+            const date = document.getElementById('transaction-date').value.replace('T', ' ');
+            
+            if (!amount || !customer || !date) {
+                alert('Please fill all required fields');
+                return;
+            }
+            
+            // Generate a random risk percentage (in production, this would come from your model)
+            const risk = Math.floor(Math.random() * 100);
+            
+            // Generate a new ID
+            const lastId = transactionData.length > 0 ? 
+                parseInt(transactionData[0].id.substring(3)) : 0;
+            const newId = `TXN${(lastId + 1).toString().padStart(4, '0')}`;
+            
+            // Add to data
+            transactionData.unshift({
+                id: newId,
+                amount: amount,
+                customer: customer,
+                type: type,
+                date: date,
+                risk: risk
+            });
+            
+            // Refresh the table
+            populateTransactionLogs();
+            
+            // Close the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addTransactionModal'));
+            modal.hide();
+            
+            // Reset form
+            document.getElementById('transaction-form').reset();
+        });
+        
+        // Function to add new account
+        document.getElementById('add-account-btn').addEventListener('click', function() {
+            const name = "Kapil"
+            const age = 21
+            const source = "WEB"
+            const device = "Phone"
+            const foreign_request = 1 
+            
+            if (!name || !age || !date) {
+                alert('Please fill all required fields');
+                return;
+            }
+            
+            // Generate a random risk percentage (in production, this would come from your model)
+            const risk = Math.floor(Math.random() * 100);
+            
+            // Generate a new ID
+            const lastId = accountData.length > 0 ? 
+                parseInt(accountData[0].id.substring(3)) : 0;
+            const newId = `ACC${(lastId + 1).toString().padStart(4, '0')}`;
+            
+            // Add to data
+            accountData.unshift({
+                id: newId,
+                name: name,
+                age: age,
+                source: source,
+                device : device,
+                foreign_request: foreign_request,
+                risk: risk
+            });
+            
+            // Refresh the table
+            populateAccountLogs();
+            
+            // Close the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addAccountModal'));
+            modal.hide();
+            
+            // Reset form
+            document.getElementById('account-form').reset();
+        });
+        
+        // Initialize logs when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            populateTransactionLogs();
+            populateAccountLogs();
+        });
+
+
+        // Handle form submission with loading state
+        document.getElementById('accountFraudForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const submitButton = this.querySelector('button[type="submit"]');
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<i class="bx bx-loader-alt bx-spin"></i> Processing...';
+
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData.entries());
+
+        data.foreign_request = formData.get('foreign_request') === 'on' ? 1 : 0;
+        data.keep_alive_session = formData.get('keep_alive_session') === 'on' ? 1 : 0;
+
+        fetch('/api/detect_account_fraud', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('riskScore').textContent = (data.risk_score * 100).toFixed(2) + '%';
+            document.getElementById('resultMessage').textContent = data.message;
+            
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.className = 'alert ' + (data.is_fraud ? 'alert-danger' : 'alert-success');
+                    // Determine row color based on risk level
+            let riskClass = '';
+            if (data.risk_score >= 0.8) {
+                riskClass = 'high-risk'; // Red for high risk
+            } else if (data.risk_score >= 0.5) {
+                riskClass = 'medium-risk'; // Yellow for medium risk
+            } else {
+                riskClass = 'low-risk'; // Green for low risk
+            }
+            // Update logs table
+            const logTable = document.getElementById('account-logs');
+            const newRow = document.createElement('tr');
+            newRow.classList.add(riskClass);
+
+            const lastId = accountData.length > 0 ? 
+                parseInt(accountData[0].id.substring(3)) : 0;
+            const newId = `ACC${(lastId + 1).toString().padStart(4, '0')}`;
+            const customerage =  document.getElementById('customer_age').value
+
+            newRow.innerHTML = `
+                <td>${data.id || newId }</td>
+                <td>${data.name || 'Unknown'}</td>
+                <td>${data.age || customerage }</td>
+                <td>${data.source || '-'}</td>
+                <td>${data.device || '-'}</td>
+                <td>${data.foreign_request ? 'Yes' : 'No'}</td>
+                <td>${(data.risk_score * 100).toFixed(2)}%</td>
+            `;
+
+            logTable.prepend(newRow); // Add new entry at the top
+        })
+        .finally(() => {
+            submitButton.disabled = false;
+            submitButton.innerHTML = '<i class="bx bx-radar"></i> ADD ACCOUNT';
+        });
+    });
+    </script>
+</body>
+</html>
